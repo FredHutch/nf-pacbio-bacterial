@@ -170,6 +170,8 @@ workflow {
         "${params.input_folder}**{${params.suffix},${params.suffix}.pbi}"
     )
 
+    bam_ch.view()
+
     // Extract the BAM files to FASTQ
     extractBAM(
         bam_ch
