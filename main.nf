@@ -14,6 +14,9 @@ def helpMessage() {
       --input_folder        Folder containing all PacBio data in *.bam files (including subdirectories)
       --output_folder       Folder to place analysis outputs
 
+    Input Files:
+      --suffix              Process all files ending with this string (default: .subreads.bam)
+
     Optional Arguments (passed directly to flye):
       --read_type           Type of PacBio or MinION reads passed in to Flye, either raw, corrected, or HiFi (PacBio-only)
                             Default: pacbio-raw
@@ -36,6 +39,7 @@ if (params.help || params.input_folder == null || params.output_folder == null){
 }
 
 // Default options listed here
+params.suffix = ".subreads.bam"
 params.read_type = "pacbio-raw"
 params.iterations = 1
 
@@ -52,18 +56,18 @@ process extractBAM {
   errorStrategy 'finish'
 
   input:
-    tuple val(name), file(bam)
+    file bam
 
   // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
   output:
-  tuple val(name), file("${name}/*")
+    file "${bam.name}_output/*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-bam2fastq -o ${name} ${bam}
+bam2fastq -o ${bam.name}_output ${bam}
 
 """
 
@@ -115,10 +119,8 @@ workflow {
 
     // Get the input files ending with BAM
     bam_ch = Channel.fromPath(
-        "${params.input_folder}**.bam"
-    ).map {
-        it -> [ it.name.replaceAll(/.bam/, ""), it ]
-    }
+        "${params.input_folder}**${params.suffix}"
+    )
 
     // Extract the BAM files to FASTQ
     extractBAM(
