@@ -26,48 +26,48 @@ def helpMessage() {
     """.stripIndent()
 }
 
-// Show help message if the user specifies the --help flag at runtime
-params.help = false
-if (params.help || params.input_folder == null || params.output_folder == null){
-    // Invoke the function above which prints the help message
-    helpMessage()
-    // Exit out and do not run anything else
-    exit 1
-}
+// // Show help message if the user specifies the --help flag at runtime
+// params.help = false
+// if (params.help || params.input_folder == null || params.output_folder == null){
+//     // Invoke the function above which prints the help message
+//     helpMessage()
+//     // Exit out and do not run anything else
+//     exit 1
+// }
 
-// Default options listed here
-params.read_type = "pacbio-raw"
-params.iterations = 1
+// // Default options listed here
+// params.read_type = "pacbio-raw"
+// params.iterations = 1
 
 /////////////////////
 // DEFINE FUNCTIONS /
 /////////////////////
 
-// Extract reads from BAM to FASTQ format
-process extractBAM {
+// // Extract reads from BAM to FASTQ format
+// process extractBAM {
 
-  // Docker container to use
-  container "quay.io/biocontainers/bam2fastx:1.3.1--he1c1bb9_0"
-  label "io_limited"
-  errorStrategy 'finish'
+//   // Docker container to use
+//   container "quay.io/biocontainers/bam2fastx:1.3.1--he1c1bb9_0"
+//   label "io_limited"
+//   errorStrategy 'finish'
 
-  input:
-    tuple val(name), file(bam)
+//   input:
+//     tuple val(name), file(bam)
 
-  // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
-  output:
-  tuple val(name), file("${name}/*")
+//   // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
+//   output:
+//   tuple val(name), file("${name}/*")
 
-"""
-#!/bin/bash
+// """
+// #!/bin/bash
 
-set -Eeuo pipefail
+// set -Eeuo pipefail
 
-bam2fastq -o ${name} ${bam}
+// bam2fastq -o ${name} ${bam}
 
-"""
+// """
 
-}
+// }
 
 // // Run Flye
 // process flye {
@@ -113,16 +113,16 @@ bam2fastq -o ${name} ${bam}
 // Start the workflow
 workflow {
 
-    // Get the input files ending with BAM
-    bam_ch = Channel.fromPath(
-        "${parmas.input_folder}**.bam"
-    ).map {
-        it -> (it.name.replaceAll(/.bam/, ''), it)
-    }
+    // // Get the input files ending with BAM
+    // bam_ch = Channel.fromPath(
+    //     "${parmas.input_folder}**.bam"
+    // ).map {
+    //     it -> (it.name.replaceAll(/.bam/, ''), it)
+    // }
 
-    // Extract the BAM files to FASTQ
-    extractBAM(
-        bam_ch
-    )
+    // // Extract the BAM files to FASTQ
+    // extractBAM(
+    //     bam_ch
+    // )
 
 }
