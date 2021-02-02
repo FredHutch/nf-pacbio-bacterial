@@ -69,46 +69,46 @@ bam2fastq -o ${name} ${bam}
 
 }
 
-// Run Flye
-process flye {
+// // Run Flye
+// process flye {
 
-  // Docker container to use
-  container "quay.io/biocontainers/flye:2.8--py37h8270d21_0"
-  label "mem_medium"
-  errorStrategy 'finish'
+//   // Docker container to use
+//   container "quay.io/biocontainers/flye:2.8--py37h8270d21_0"
+//   label "mem_medium"
+//   errorStrategy 'finish'
 
-  // The `publishDir` tag points to a folder in the host system where all of the output files from this folder will be placed
-  publishDir "${params.output_folder}" 
+//   // The `publishDir` tag points to a folder in the host system where all of the output files from this folder will be placed
+//   publishDir "${params.output_folder}" 
   
-  input:
-    tuple val(name), file(reads)
+//   input:
+//     tuple val(name), file(reads)
 
-  // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
-  output:
-  file "${name}/*"
+//   // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
+//   output:
+//   file "${name}/*"
 
-"""
-#!/bin/bash
+// """
+// #!/bin/bash
 
-set -e
+// set -e
 
-df -h
-echo ""
-ls -lahtr
-echo ""
-echo "STARTING FLYE"
-echo ""
+// df -h
+// echo ""
+// ls -lahtr
+// echo ""
+// echo "STARTING FLYE"
+// echo ""
 
-flye \
-    --${params.read_type} ${reads} \
-    --out-dir ${name} \
-    --threads ${task.cpus} \
-    --iterations ${params.iterations} \
-    --plasmids
+// flye \
+//     --${params.read_type} ${reads} \
+//     --out-dir ${name} \
+//     --threads ${task.cpus} \
+//     --iterations ${params.iterations} \
+//     --plasmids
 
-"""
+// """
 
-}
+// }
 
 // Start the workflow
 workflow {
