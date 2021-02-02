@@ -117,7 +117,7 @@ workflow {
     bam_ch = Channel.fromPath(
         "${params.input_folder}**.bam"
     ).map {
-        it -> (it.name.replaceAll(/.bam/, ""), it)
+        it -> [ it.name.replaceAll(/.bam/, ""), it ]
     }
 
     // // Extract the BAM files to FASTQ
