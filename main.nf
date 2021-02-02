@@ -58,7 +58,6 @@ process extractBAM {
   input:
     file bam
 
-  // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
   output:
     file "${bam.name}_output/*"
 
@@ -81,13 +80,11 @@ process flye {
   label "mem_medium"
   errorStrategy 'finish'
 
-  // The `publishDir` tag points to a folder in the host system where all of the output files from this folder will be placed
-  publishDir "${params.output_folder}" 
+//   publishDir "${params.output_folder}" 
   
   input:
     tuple val(name), file(reads)
 
-  // The block below points to the files inside the process working directory which will be retained as outputs (and published to the destination above)
   output:
   file "${name}/*"
 
@@ -96,19 +93,67 @@ process flye {
 
 set -e
 
-df -h
-echo ""
-ls -lahtr
-echo ""
-echo "STARTING FLYE"
-echo ""
-
 flye \
     --${params.read_type} ${reads} \
     --out-dir ${name} \
     --threads ${task.cpus} \
     --iterations ${params.iterations} \
     --plasmids
+
+"""
+
+}
+
+// Run FastQC
+process fastQC {
+
+  // Docker container to use
+  container "quay.io/biocontainers/fastqc:0.11.9--0"
+  label "io_limited"
+  errorStrategy 'finish'
+
+//   publishDir "${params.output_folder}" 
+  
+  input:
+    tuple val(name), file(reads)
+
+  output:
+  file "${name}/*"
+
+"""
+#!/bin/bash
+
+set -Eeuo pipefail
+
+fastqc -t ${task.cpus} *.fq
+
+"""
+
+}
+
+// Run CheckM
+process checkM {
+
+  container "quay.io/biocontainers/checkm-genome:1.1.3--py_1"
+  label "mem_medium"
+  errorStrategy 'finish'
+
+//   publishDir "${params.output_folder}" 
+  
+  input:
+    file "input/*"
+
+  output:
+    file "output/*"
+
+"""
+#!/bin/bash
+
+set -Eeuo pipefail
+
+mkdir output
+
+checkm lineage_wf input/ output/
 
 """
 
@@ -125,6 +170,21 @@ workflow {
     // Extract the BAM files to FASTQ
     extractBAM(
         bam_ch
+    )
+
+    // Run FastQC on the reads
+    fastQC(
+        extractBAM.out
+    )
+
+    // Also run the assembler
+    flye(
+        extractBAM.out
+    )
+
+    // Check the quality of the assemblies
+    checkM(
+        flye.out
     )
 
 }
