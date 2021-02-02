@@ -115,7 +115,7 @@ workflow {
 
     // Get the input files ending with BAM
     bam_ch = Channel.fromPath(
-        "${parmas.input_folder}**.bam"
+        "${params.input_folder}**.bam"
     ).map {
         it -> (it.name.replaceAll(/.bam/, ''), it)
     }
