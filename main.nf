@@ -39,23 +39,9 @@ if (params.help || params.input_folder == null || params.output_folder == null){
 params.read_type = "pacbio-raw"
 params.iterations = 1
 
-// Start the workflow
-workflow {
-    main:
-
-    // Get the input files ending with BAM
-    bam_ch = Channel.fromPath(
-        "${parmas.input_folder}**.bam"
-    ).map {
-        it -> (it.name.replaceAll(/.bam/, ''), it)
-    }
-
-    // Extract the BAM files to FASTQ
-    extractBAM(
-        bam_ch
-    )
-
-}
+/////////////////////
+// DEFINE FUNCTIONS /
+/////////////////////
 
 // Extract reads from BAM to FASTQ format
 process extractBAM {
@@ -121,5 +107,22 @@ flye \
     --plasmids
 
 """
+
+}
+
+// Start the workflow
+workflow {
+
+    // Get the input files ending with BAM
+    bam_ch = Channel.fromPath(
+        "${parmas.input_folder}**.bam"
+    ).map {
+        it -> (it.name.replaceAll(/.bam/, ''), it)
+    }
+
+    // Extract the BAM files to FASTQ
+    extractBAM(
+        bam_ch
+    )
 
 }
