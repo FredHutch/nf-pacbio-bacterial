@@ -113,12 +113,12 @@ def helpMessage() {
 // Start the workflow
 workflow {
 
-    // // Get the input files ending with BAM
-    // bam_ch = Channel.fromPath(
-    //     "${parmas.input_folder}**.bam"
-    // ).map {
-    //     it -> (it.name.replaceAll(/.bam/, ''), it)
-    // }
+    // Get the input files ending with BAM
+    bam_ch = Channel.fromPath(
+        "${parmas.input_folder}**.bam"
+    ).map {
+        it -> (it.name.replaceAll(/.bam/, ''), it)
+    }
 
     // // Extract the BAM files to FASTQ
     // extractBAM(
