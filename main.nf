@@ -11,11 +11,12 @@ def helpMessage() {
     nextflow run FredHutch/nf-pacbio-bacterial <ARGUMENTS>
     
     Required Arguments:
-      --input_folder        Folder containing all PacBio data in *.bam files (including subdirectories)
+      --input_folder        Folder containing all PacBio data in BAM files (including subdirectories)
       --output_folder       Folder to place analysis outputs
 
     Input Files:
       --suffix              Process all files ending with this string (default: .subreads.bam)
+                            Note that files must have a paired .bam.pbi file in the same folder.
 
     Optional Arguments (passed directly to flye):
       --read_type           Type of PacBio or MinION reads passed in to Flye, either raw, corrected, or HiFi (PacBio-only)
@@ -56,17 +57,19 @@ process extractBAM {
   errorStrategy 'finish'
 
   input:
-    file bam
+    tuple file(bam), file(pbi)
 
   output:
-    file "${bam.name}_output/*"
+    file "output/*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-bam2fastq -o ${bam.name}_output ${bam}
+mkdir output
+
+bam2fastq -o output ${bam}
 
 """
 
@@ -164,7 +167,7 @@ workflow {
 
     // Get the input files ending with BAM
     bam_ch = Channel.fromPath(
-        "${params.input_folder}**${params.suffix}"
+        "${params.input_folder}**{${params.suffix},${params.suffix}.pbi}"
     )
 
     // Extract the BAM files to FASTQ
