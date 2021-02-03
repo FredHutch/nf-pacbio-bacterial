@@ -1,3 +1,10 @@
+# Nextflow files
+.nextflow.log*
+.nextflow/*
+report.html*
+trace.txt*
+test.sh
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

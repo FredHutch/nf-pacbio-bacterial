@@ -19,6 +19,7 @@ def helpMessage() {
                             Note that files must have a paired .bam.pbi file in the same folder.
 
     Optional Arguments (passed directly to flye):
+      --subset_n_reads      If specified, filter down to a maximum of N reads per input
       --read_type           Type of PacBio or MinION reads passed in to Flye, either raw, corrected, or HiFi (PacBio-only)
                             Default: pacbio-raw
                             Options: pacbio-raw, pacbio-corr, pacbio-hifi, nano-raw, nano-corr, subassemblies
@@ -43,6 +44,7 @@ if (params.help || params.input_folder == null || params.output_folder == null){
 params.suffix = ".subreads.bam"
 params.read_type = "pacbio-raw"
 params.iterations = 1
+params.subset_n_reads = false
 
 /////////////////////
 // DEFINE FUNCTIONS /
@@ -56,20 +58,49 @@ process extractBAM {
   label "io_limited"
   errorStrategy 'finish'
 
+  publishDir "${params.output_folder}" 
+  
   input:
-    tuple file(bam), file(pbi)
+    tuple val(prefix), file(bam), file(pbi)
 
   output:
-    file "output/*"
+    tuple val(prefix), file("${prefix}.fastq.gz")
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-mkdir output
+bam2fastq -o ${prefix} ${bam}
 
-bam2fastq -o output ${bam}
+"""
+
+}
+
+// Filter down the number of reads in a FASTQ
+process filterFASTQ {
+
+  // Docker container to use
+  container "quay.io/fhcrc-microbiome/experiment-collection:v0.2"
+  label "mem_medium"
+  errorStrategy 'finish'
+
+  publishDir "${params.output_folder}" 
+  
+  input:
+    tuple val(prefix), file(fastq)
+
+  output:
+    tuple val(prefix), file("${prefix}.subset.fastq.gz")
+
+"""
+#!/bin/bash
+
+set -e
+
+gunzip -c ${fastq} | \
+    head -n ${params.subset_n_reads} | \
+    gzip -c > ${prefix}.subset.fastq.gz
 
 """
 
@@ -83,12 +114,13 @@ process flye {
   label "mem_medium"
   errorStrategy 'finish'
 
-//   publishDir "${params.output_folder}" 
+  publishDir "${params.output_folder}" 
   
   input:
     tuple val(name), file(reads)
 
   output:
+  tuple val(name), file("${name}/assembly.fasta")
   file "${name}/*"
 
 """
@@ -115,20 +147,20 @@ process fastQC {
   label "io_limited"
   errorStrategy 'finish'
 
-//   publishDir "${params.output_folder}" 
+  publishDir "${params.output_folder}" 
   
   input:
     tuple val(name), file(reads)
 
   output:
-  file "${name}/*"
+  file "*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-fastqc -t ${task.cpus} *.fq
+fastqc -t ${task.cpus} ${reads}
 
 """
 
@@ -141,10 +173,10 @@ process checkM {
   label "mem_medium"
   errorStrategy 'finish'
 
-//   publishDir "${params.output_folder}" 
+  publishDir "${params.output_folder}" 
   
   input:
-    file "input/*"
+    tuple val(name), file(fasta)
 
   output:
     file "output/*"
@@ -154,6 +186,8 @@ process checkM {
 
 set -Eeuo pipefail
 
+mkdir input
+mv "${fasta}" input/
 mkdir output
 
 checkm lineage_wf input/ output/
@@ -168,28 +202,47 @@ workflow {
     // Get the input files ending with BAM
     bam_ch = Channel.fromPath(
         "${params.input_folder}**{${params.suffix},${params.suffix}.pbi}"
-    )
-
-    bam_ch.view()
+    ).map {
+        it -> [ it.name.replaceAll(/.pbi/, ''), it ]
+    }.groupTuple(
+    ).filter {
+        it[1].size() == 2
+    }.map {
+        it -> [it[0], it[1][0], it[1][1]]
+    }
 
     // Extract the BAM files to FASTQ
     extractBAM(
         bam_ch
     )
 
+    if (params.subset_n_reads > 0) {
+
+        filterFASTQ(
+            extractBAM.out
+        )
+
+        fastq_ch = filterFASTQ.out
+
+    } else {
+
+        fastq_ch = extractBAM.out
+
+    }
+
     // Run FastQC on the reads
     fastQC(
-        extractBAM.out
+        fastq_ch
     )
 
     // Also run the assembler
     flye(
-        extractBAM.out
+        fastq_ch
     )
 
     // Check the quality of the assemblies
     checkM(
-        flye.out
+        flye.out[0]
     )
 
 }
