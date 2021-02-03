@@ -20,6 +20,7 @@ def helpMessage() {
 
     Optional Arguments (passed directly to flye):
       --subset_n_reads      If specified, filter down to a maximum of N reads per input
+      --fastqc_max_reads    Maximum number of reads to profile with FastQC (default: 10,000)
       --read_type           Type of PacBio or MinION reads passed in to Flye, either raw, corrected, or HiFi (PacBio-only)
                             Default: pacbio-raw
                             Options: pacbio-raw, pacbio-corr, pacbio-hifi, nano-raw, nano-corr, subassemblies
@@ -45,6 +46,7 @@ params.suffix = ".subreads.bam"
 params.read_type = "pacbio-raw"
 params.iterations = 1
 params.subset_n_reads = false
+params.fastqc_max_reads = 10000
 
 /////////////////////
 // DEFINE FUNCTIONS /
@@ -99,7 +101,7 @@ process filterFASTQ {
 set -e
 
 gunzip -c ${fastq} | \
-    head -n ${params.subset_n_reads} | \
+    head -n ${params.subset_n_reads * 4} | \
     gzip -c > ${prefix}.subset.fastq.gz
 
 """
@@ -160,7 +162,11 @@ process fastQC {
 
 set -Eeuo pipefail
 
-fastqc -t ${task.cpus} ${reads}
+gunzip -c ${reads} | \
+    head -n ${params.fastqc_max_reads * 4} | \
+    gzip -c > TEMP.fastq.gz
+mv TEMP.fastq.gz ${reads.name}
+fastqc -t ${task.cpus} ${reads.name}
 
 """
 
