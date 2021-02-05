@@ -61,21 +61,20 @@ process sequeltools_QC {
     tuple val(prefix), file(subreads_bam), file(subreads_pbi), file(scraps_bam), file(scraps_pbi)
 
   output:
-    file "output/*"
+    file "SequelToolsResults/*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-echo "${subreads_bam.name}" > subreads.txt
-echo "${scraps_bam.name}" > scraps.txt
+echo "${subreads_bam.name}" > subFiles.txt
+echo "${scraps_bam.name}" > scrFiles.txt
 
 # Run QC
 bash /usr/local/sequeltools/SequelTools/Scripts/SequelTools.sh \
     -v \
     -n ${task.cpus} \
-    -o output \
     -t Q \
     -u subFiles.txt \
     -c scrFiles.txt
@@ -98,21 +97,20 @@ process sequeltools_subsampling {
     tuple val(prefix), file(subreads_bam), file(subreads_pbi), file(scraps_bam), file(scraps_pbi)
 
   output:
-    file "output/*"
+    file "SequelToolsResults/*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-echo "${subreads_bam.name}" > subreads.txt
-echo "${scraps_bam.name}" > scraps.txt
+echo "${subreads_bam.name}" > subFiles.txt
+echo "${scraps_bam.name}" > scrFiles.txt
 
 # Run Subsampling
 bash /usr/local/sequeltools/SequelTools/Scripts/SequelTools.sh \
     -v \
     -n ${task.cpus} \
-    -o output \
     -t S \
     -T l \
     -u subFiles.txt \
@@ -136,21 +134,20 @@ process sequeltools_filtering {
     tuple val(prefix), file(subreads_bam), file(subreads_pbi), file(scraps_bam), file(scraps_pbi)
 
   output:
-    file "output/*"
+    file "SequelToolsResults/*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
-echo "${subreads_bam.name}" > subreads.txt
-echo "${scraps_bam.name}" > scraps.txt
+echo "${subreads_bam.name}" > subFiles.txt
+echo "${scraps_bam.name}" > scrFiles.txt
 
 # Run Read Filtering
 bash /usr/local/sequeltools/SequelTools/Scripts/SequelTools.sh \
     -v \
     -n ${task.cpus} \
-    -o output \
     -t F \
     -C -P -N -Z ${params.min_length} \
     -u subFiles.txt \
