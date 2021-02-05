@@ -11,30 +11,23 @@ def helpMessage() {
     nextflow run FredHutch/nf-pacbio-bacterial <ARGUMENTS>
     
     Required Arguments:
-      --input_folder        Folder containing all PacBio data in BAM files (including subdirectories)
+      --input_folder        Folder containing PacBio output data
       --output_folder       Folder to place analysis outputs
 
-    Input Files:
-      --suffix              Process all files ending with this string (default: .subreads.bam)
-                            Note that files must have a paired .bam.pbi file in the same folder.
-
-    Optional Arguments (passed directly to flye):
-      --subset_n_reads      If specified, filter down to a maximum of N reads per input
-      --fastqc_max_reads    Maximum number of reads to profile with FastQC (default: 10,000)
-      --read_type           Type of PacBio or MinION reads passed in to Flye, either raw, corrected, or HiFi (PacBio-only)
-                            Default: pacbio-raw
-                            Options: pacbio-raw, pacbio-corr, pacbio-hifi, nano-raw, nano-corr, subassemblies
-      --iterations          Number of polishing iterations
-                            Default: 1
-    
-    For more details on Flye, see https://github.com/fenderglass/Flye/blob/flye/docs/USAGE.md
+    Optional QC Arguments:
+      --min_length          Minimum read length filter (default: 1000)
+      
+    For more details on SequelTools, see https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-020-03751-8
 
     """.stripIndent()
 }
 
 // Show help message if the user specifies the --help flag at runtime
 params.help = false
-if (params.help || params.input_folder == null || params.output_folder == null){
+params.input_folder = null
+params.prefix = null
+params.output_folder = null
+if (params.help || params.input_folder == null || params.output_folder == null || params.prefix == null){
     // Invoke the function above which prints the help message
     helpMessage()
     // Exit out and do not run anything else
@@ -42,8 +35,10 @@ if (params.help || params.input_folder == null || params.output_folder == null){
 }
 
 // Default options listed here
-params.suffix = ".subreads.bam"
-params.read_type = "pacbio-raw"
+params.read_type = "pacbio-corr"
+params.min_qscore = 25
+params.min_qscore_pct = 90
+params.min_length = 1000
 params.iterations = 1
 params.subset_n_reads = false
 params.fastqc_max_reads = 10000
@@ -52,137 +47,18 @@ params.fastqc_max_reads = 10000
 // DEFINE FUNCTIONS /
 /////////////////////
 
-// Extract reads from BAM to FASTQ format
-process extractBAM {
+// Run QC with SequelTools
+process sequeltools_QC {
 
   // Docker container to use
-  container "quay.io/biocontainers/bam2fastx:1.3.1--he1c1bb9_0"
-  label "io_limited"
-  errorStrategy 'finish'
-
-  publishDir "${params.output_folder}" 
-  
-  input:
-    tuple val(prefix), file(bam), file(pbi)
-
-  output:
-    tuple val(prefix), file("${prefix}.fastq.gz")
-
-"""
-#!/bin/bash
-
-set -Eeuo pipefail
-
-bam2fastq -o ${prefix} ${bam}
-
-"""
-
-}
-
-// Filter down the number of reads in a FASTQ
-process filterFASTQ {
-
-  // Docker container to use
-  container "quay.io/fhcrc-microbiome/experiment-collection:v0.2"
+  container "quay.io/fhcrc-microbiome/sequeltools:latest"
   label "mem_medium"
   errorStrategy 'finish'
 
-  publishDir "${params.output_folder}" 
+  publishDir "${params.output_folder}/${prefix}/qc/" 
   
   input:
-    tuple val(prefix), file(fastq)
-
-  output:
-    tuple val(prefix), file("${prefix}.subset.fastq.gz")
-
-"""
-#!/bin/bash
-
-set -e
-
-gunzip -c ${fastq} | \
-    head -n ${params.subset_n_reads * 4} | \
-    gzip -c > ${prefix}.subset.fastq.gz
-
-"""
-
-}
-
-// Run Flye
-process flye {
-
-  // Docker container to use
-  container "quay.io/biocontainers/flye:2.8--py37h8270d21_0"
-  label "mem_medium"
-  errorStrategy 'finish'
-
-  publishDir "${params.output_folder}" 
-  
-  input:
-    tuple val(name), file(reads)
-
-  output:
-  tuple val(name), file("${name}/assembly.fasta")
-  file "${name}/*"
-
-"""
-#!/bin/bash
-
-set -e
-
-flye \
-    --${params.read_type} ${reads} \
-    --out-dir ${name} \
-    --threads ${task.cpus} \
-    --iterations ${params.iterations} \
-    --plasmids
-
-"""
-
-}
-
-// Run FastQC
-process fastQC {
-
-  // Docker container to use
-  container "quay.io/biocontainers/fastqc:0.11.9--0"
-  label "io_limited"
-  errorStrategy 'finish'
-
-  publishDir "${params.output_folder}" 
-  
-  input:
-    tuple val(name), file(reads)
-
-  output:
-  file "*"
-
-"""
-#!/bin/bash
-
-set -Eeuo pipefail
-
-gunzip -c ${reads} | \
-    head -n ${params.fastqc_max_reads * 4} | \
-    gzip -c > TEMP.fastq.gz
-mv TEMP.fastq.gz ${reads.name}
-fastqc -t ${task.cpus} ${reads.name}
-
-"""
-
-}
-
-// Run CheckM
-process checkM {
-
-  container "quay.io/biocontainers/checkm-genome:1.1.3--py_1"
-  label "mem_medium"
-  errorStrategy 'finish'
-
-  publishDir "${params.output_folder}" 
-  
-  input:
-    tuple val(name), file(fasta)
+    tuple val(prefix), file(subreads_bam), file(subreads_pbi), file(scraps_bam), file(scraps_pbi)
 
   output:
     file "output/*"
@@ -192,11 +68,93 @@ process checkM {
 
 set -Eeuo pipefail
 
-mkdir input
-mv "${fasta}" input/
-mkdir output
+echo "${subreads_bam.name}" > subreads.txt
+echo "${scraps_bam.name}" > scraps.txt
 
-checkm lineage_wf input/ output/
+# Run QC
+bash /usr/local/sequeltools/SequelTools/Scripts/SequelTools.sh \
+    -v \
+    -n ${task.cpus} \
+    -o output \
+    -t Q \
+    -u subFiles.txt \
+    -c scrFiles.txt
+
+"""
+
+}
+
+// Run subsampling with SequelTools
+process sequeltools_subsampling {
+
+  // Docker container to use
+  container "quay.io/fhcrc-microbiome/sequeltools:latest"
+  label "mem_medium"
+  errorStrategy 'finish'
+
+  publishDir "${params.output_folder}/${prefix}/subsampling/" 
+  
+  input:
+    tuple val(prefix), file(subreads_bam), file(subreads_pbi), file(scraps_bam), file(scraps_pbi)
+
+  output:
+    file "output/*"
+
+"""
+#!/bin/bash
+
+set -Eeuo pipefail
+
+echo "${subreads_bam.name}" > subreads.txt
+echo "${scraps_bam.name}" > scraps.txt
+
+# Run Subsampling
+bash /usr/local/sequeltools/SequelTools/Scripts/SequelTools.sh \
+    -v \
+    -n ${task.cpus} \
+    -o output \
+    -t S \
+    -T l \
+    -u subFiles.txt \
+    -c scrFiles.txt
+
+"""
+
+}
+
+// Run read filtering with SequelTools
+process sequeltools_filtering {
+
+  // Docker container to use
+  container "quay.io/fhcrc-microbiome/sequeltools:latest"
+  label "mem_medium"
+  errorStrategy 'finish'
+
+  publishDir "${params.output_folder}/${prefix}/filtering/" 
+  
+  input:
+    tuple val(prefix), file(subreads_bam), file(subreads_pbi), file(scraps_bam), file(scraps_pbi)
+
+  output:
+    file "output/*"
+
+"""
+#!/bin/bash
+
+set -Eeuo pipefail
+
+echo "${subreads_bam.name}" > subreads.txt
+echo "${scraps_bam.name}" > scraps.txt
+
+# Run Read Filtering
+bash /usr/local/sequeltools/SequelTools/Scripts/SequelTools.sh \
+    -v \
+    -n ${task.cpus} \
+    -o output \
+    -t F \
+    -C -P -N -Z ${params.min_length} \
+    -u subFiles.txt \
+    -c scrFiles.txt
 
 """
 
@@ -205,50 +163,42 @@ checkm lineage_wf input/ output/
 // Start the workflow
 workflow {
 
-    // Get the input files ending with BAM
-    bam_ch = Channel.fromPath(
-        "${params.input_folder}**{${params.suffix},${params.suffix}.pbi}"
-    ).map {
-        it -> [ it.name.replaceAll(/.pbi/, ''), it ]
-    }.groupTuple(
-    ).filter {
-        it[1].size() == 2
-    }.map {
-        it -> [it[0], it[1][0], it[1][1]]
-    }
+    // Get the input files ending with {subreads | scraps}.bam(.pbi)
+    subreads_bam_ch = Channel.fromPath(
+        "${params.input_folder}**.subreads.bam"
+    ).map { it -> [it.name.replaceAll(/.subreads.bam/, ''), it]}
+    
+    subreads_pbi_ch = Channel.fromPath(
+        "${params.input_folder}**.subreads.bam.pbi"
+    ).map { it -> [it.name.replaceAll(/.subreads.bam.pbi/, ''), it]}
 
-    // Extract the BAM files to FASTQ
-    extractBAM(
+    scraps_bam_ch = Channel.fromPath(
+        "${params.input_folder}**.scraps.bam"
+    ).map { it -> [it.name.replaceAll(/.scraps.bam/, ''), it]}
+    
+    scraps_pbi_ch = Channel.fromPath(
+        "${params.input_folder}**.scraps.bam.pbi"
+    ).map { it -> [it.name.replaceAll(/.scraps.bam.pbi/, ''), it]}
+
+    combined_ch = subreads_bam_ch.join(
+        subreads_pbi_ch
+    ).join(
+        scraps_bam_ch
+    ).join(
+        scraps_pbi_ch
+    )
+
+    combined_ch.view()
+
+    // Run SequelTools
+    sequeltools_QC(
         bam_ch
     )
-
-    if (params.subset_n_reads > 0) {
-
-        filterFASTQ(
-            extractBAM.out
-        )
-
-        fastq_ch = filterFASTQ.out
-
-    } else {
-
-        fastq_ch = extractBAM.out
-
-    }
-
-    // Run FastQC on the reads
-    fastQC(
-        fastq_ch
+    sequeltools_filtering(
+        bam_ch
     )
-
-    // Also run the assembler
-    flye(
-        fastq_ch
-    )
-
-    // Check the quality of the assemblies
-    checkM(
-        flye.out[0]
+    sequeltools_subsampling(
+        bam_ch
     )
 
 }
