@@ -188,17 +188,15 @@ workflow {
         scraps_pbi_ch
     )
 
-    combined_ch.view()
-
     // Run SequelTools
     sequeltools_QC(
-        bam_ch
+        combined_ch
     )
     sequeltools_filtering(
-        bam_ch
+        combined_ch
     )
     sequeltools_subsampling(
-        bam_ch
+        combined_ch
     )
 
 }
