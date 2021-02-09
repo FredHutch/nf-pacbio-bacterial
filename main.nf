@@ -53,9 +53,9 @@ params.mode = "normal"
 // Run UniCycler
 process unicycler {
     container "${container__unicycler}"
-    label "mem_verylarge"
+    label "mem_veryhigh"
     errorStrategy "finish"
-    publishDir "${params.output_folder}/${genome_name}/${mode}/"
+    publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
 
     input:
     tuple val(genome_name), file(long_reads)
@@ -74,7 +74,7 @@ unicycler \
     -l ${long_reads} \
     -o ${genome_name} \
     --keep 0 \
-    --mode ${mode} \
+    --mode ${params.mode} \
     -t ${task.cpus}
 
 mv ${genome_name}/assembly.gfa ${genome_name}/${genome_name}.gfa
@@ -90,13 +90,13 @@ process summarizeAssemblies {
     container "${container__pandas}"
     label "io_limited"
     errorStrategy "finish"
-    publishDir "${params.output_folder}/${genome_name}/${mode}/"
+    publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
 
     input:
-    set val(genome_name), file(contigs_fasta_gz)
+    tuple val(genome_name), file(contigs_fasta_gz)
 
     output:
-    file "${genome_name}.${mode}.json"
+    file "${genome_name}.${params.mode}.json"
 
 """#!/usr/bin/env python3
 import gzip
@@ -153,7 +153,7 @@ assert n50 is not None
 
 # Summarize these contigs
 output = {
-    "mode": "${mode}",
+    "mode": "${params.mode}",
     "genome_name": "${genome_name}",
     "num_contigs": int(contig_info.shape[0]),
     "num_circular_contigs": int(contig_info["circular"].sum()),
@@ -169,7 +169,7 @@ output = {
     "N50": n50,
 }
 
-json.dump(output, open("${genome_name}.${mode}.json", "wt"), indent=4)
+json.dump(output, open("${genome_name}.${params.mode}.json", "wt"), indent=4)
 
 """
 }
@@ -209,25 +209,32 @@ ls -lahtr
 process checkM {
 
   container "${container__checkm}"
-  label "mem_medium"
+  label "mem_veryhigh"
   errorStrategy 'finish'
 
   publishDir "${params.output_folder}/${name}/checkm/" 
   
   input:
-    tuple val(name), file("input/*")
+    tuple val(name), file(fasta_gz)
 
   output:
-    file "output/*"
+    file "*"
 
 """
 #!/bin/bash
 
 set -Eeuo pipefail
 
+mkdir input
 mkdir output
+gunzip -c ${fasta_gz} > input/${name}.fa
+rm ${fasta_gz}
 
-checkm lineage_wf input/ output/
+checkm lineage_wf -t ${task.cpus} -x fa input/ output/
+
+mv output/* ./
+rmdir output
+rm -r input
 
 """
 
@@ -255,12 +262,12 @@ workflow {
 
     // Compute metrics on the assembly
     summarizeAssemblies(
-        unicycler.out
+        unicycler.out[0]
     )
 
     // Check the quality of the assemblies
     checkM(
-        unicycler.out
+        unicycler.out[0]
     )
 
 }
