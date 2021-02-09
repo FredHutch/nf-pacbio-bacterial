@@ -3,8 +3,7 @@
 The purpose of this workflow is to process the raw PacBio data
 generated from bacterial isolates, including:
 
-- Extracting reads from BAM format (if necessary)
-- Generating quality metrics for all specimens
+- Generating FASTQ quality metrics for all specimens
 - Performing _de novo_ assembly
 - Measuring the completeness and contamination of each assembly
 
@@ -17,7 +16,8 @@ To run this workflow, you will need to first:
 - Identify the folder in which all output files should be placed
 
 NOTE: While reading input files, this script will traverse all subdirectories
-and analyze any file ending with ".bam". The output for every individual input
+and analyze any file ending with ".fastq.gz". The user may select any other file
+extension using the `--suffix` flag. The output for every individual input
 file will be placed in a subdirectory within the output folder, with that
 subdirectory named for the input file. Please ensure that all of these input
 files have unique names.
