@@ -182,7 +182,7 @@ process fastQC {
   label "io_limited"
   errorStrategy 'finish'
 
-  publishDir "${params.output_folder}/${name}/fastqc/" 
+  publishDir "${params.output_folder}/${name}/${params.mode}/" 
   
   input:
     tuple val(name), file(reads)
@@ -212,7 +212,7 @@ process checkM {
   label "mem_veryhigh"
   errorStrategy 'finish'
 
-  publishDir "${params.output_folder}/${name}/checkm/" 
+  publishDir "${params.output_folder}/${name}/${params.mode}/checkm/" 
   
   input:
     tuple val(name), file(fasta_gz)
