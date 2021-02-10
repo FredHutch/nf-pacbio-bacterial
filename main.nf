@@ -252,6 +252,7 @@ process prokka {
     
     output:
     file "prokka/${genome_name}.${params.mode}.faa.gz"
+    file "prokka/${genome_name}.${params.mode}.gbk.gz"
     file "prokka/${genome_name}.${params.mode}.gff.gz"
     file "prokka/${genome_name}.${params.mode}.tsv.gz"
     
@@ -271,6 +272,7 @@ prokka \
 
 
 gzip prokka/${genome_name}.${params.mode}.faa
+gzip prokka/${genome_name}.${params.mode}.gbk
 gzip prokka/${genome_name}.${params.mode}.gff
 gzip prokka/${genome_name}.${params.mode}.tsv
     """
