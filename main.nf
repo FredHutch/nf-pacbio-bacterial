@@ -8,6 +8,7 @@ container__unicycler = "quay.io/biocontainers/unicycler:0.4.7--py37hdbcaa40_1"
 container__pandas = "quay.io/fhcrc-microbiome/python-pandas:latest"
 container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--0"
 container__checkm = "quay.io/biocontainers/checkm-genome:1.1.3--py_1"
+container__prokka = "quay.io/fhcrc-microbiome/prokka:latest"
 
 // Function which prints help message text
 def helpMessage() {
@@ -209,7 +210,7 @@ ls -lahtr
 process checkM {
 
   container "${container__checkm}"
-  label "mem_veryhigh"
+  label "mem_medium"
   errorStrategy 'finish'
 
   publishDir "${params.output_folder}/${name}/${params.mode}/checkm/" 
@@ -240,6 +241,41 @@ rm -r input
 
 }
 
+process prokka {
+    container "${container__prokka}"
+    label "mem_medium"
+    errorStrategy 'finish'
+    publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
+
+    input:
+    tuple val(genome_name), file(contigs_fasta_gz)
+    
+    output:
+    file "prokka/${genome_name}.${params.mode}.faa.gz"
+    file "prokka/${genome_name}.${params.mode}.gff.gz"
+    file "prokka/${genome_name}.${params.mode}.tsv.gz"
+    
+    """#!/bin/bash
+
+set -Eeuo pipefail
+
+# Decompress the assembly
+gunzip -c ${contigs_fasta_gz} > ${contigs_fasta_gz.simpleName}.fasta
+
+prokka \
+    --outdir prokka/ \
+    --prefix ${genome_name}.${params.mode} \
+    --cpus ${task.cpus} \
+    --compliant \
+    ${contigs_fasta_gz.simpleName}.fasta
+
+
+gzip prokka/${genome_name}.${params.mode}.faa
+gzip prokka/${genome_name}.${params.mode}.gff
+gzip prokka/${genome_name}.${params.mode}.tsv
+    """
+}
+
 // Start the workflow
 workflow {
 
@@ -267,6 +303,11 @@ workflow {
 
     // Check the quality of the assemblies
     checkM(
+        unicycler.out[0]
+    )
+
+    // Annotate the assemblies
+    prokka(
         unicycler.out[0]
     )
 
