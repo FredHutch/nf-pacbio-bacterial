@@ -22,6 +22,28 @@ file will be placed in a subdirectory within the output folder, with that
 subdirectory named for the input file. Please ensure that all of these input
 files have unique names.
 
+## Quality Control
+
+Quality control metrics are generated with the FastQC tool. For more details,
+visit [the website](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).
+
+## Assembly
+
+Assembly of each specimen is performed with the UniCycler _de novo_ assembly tool.
+For more details on this assembly method, please read 
+[the publication](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005595)
+or visit [the website](https://github.com/rrwick/Unicycler).
+
+By default, the `normal` mode is used for assembly. To run UniCycler in either the
+bold or conservative mode, use the `--mode` flag.
+
+## Assembly Validation
+
+The completeness and contamination levels for each assembly are evaluated
+using the CheckM tool. For more details on that tool, please visit
+[the website](https://ecogenomics.github.io/CheckM/) or read
+[the paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4484387/).
+
 ### Basic Execution
 
 The example immediately below provides the simplest example of how to run
