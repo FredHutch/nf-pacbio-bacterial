@@ -334,7 +334,7 @@ workflow {
             file(params.barcodes)
         )
 
-        demultiplex.out.view
+        demultiplex.out.view()
 
     } else {
 
