@@ -9,6 +9,7 @@ container__pandas = "quay.io/fhcrc-microbiome/python-pandas:latest"
 container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--0"
 container__checkm = "quay.io/biocontainers/checkm-genome:1.1.3--py_1"
 container__prokka = "quay.io/fhcrc-microbiome/prokka:latest"
+container__lima = "quay.io/biocontainers/lima:2.2.0--h9ee0642_0"
 
 // Function which prints help message text
 def helpMessage() {
@@ -23,6 +24,9 @@ def helpMessage() {
 
     Input Files:
       --suffix              Process all files ending with this string (default: .fastq.gz)
+      --barcodes            Optional FASTA file with per-sample barcode sequences. 
+                            If specified, input FASTQ files will be demultiplexed as described:
+                            https://lima.how/get-started.html
 
     Optional Assembly Arguments (passed UniCycler):
       --mode                Assembly mode
@@ -45,11 +49,40 @@ if (params.help || params.input_folder == null || params.output_folder == null){
 
 // Default options listed here
 params.suffix = ".fastq.gz"
+params.barcodes = false
+params.demux_flags = "--same --split-named"
 params.mode = "normal"
+
 
 /////////////////////
 // DEFINE FUNCTIONS /
 /////////////////////
+
+// Run lima
+process demultiplex {
+    container "${container__lima}"
+    label "mem_medium"
+    errorStrategy "finish"
+    publishDir "${params.output_folder}/demux/"
+
+    input:
+    file input_fastq
+    file barcodes_fasta
+
+    output:
+    file "*"
+
+"""
+set -Eeuo pipefail
+
+lima \
+    "${input_fastq}" \
+    "${barcodes_fasta}" \
+    "${input_fastq}.demux.fq.gz" \
+    ${params.demux_flags}
+
+"""
+}
 
 // Run UniCycler
 process unicycler {
@@ -293,24 +326,38 @@ workflow {
         input_ch
     )
 
-    // Run the assembler
-    unicycler(
-        input_ch
-    )
+    // If barcodes were provided
+    if (params.barcodes) {
 
-    // Compute metrics on the assembly
-    summarizeAssemblies(
-        unicycler.out[0]
-    )
+        demultiplex(
+            input_ch,
+            file(params.barcodes)
+        )
 
-    // Check the quality of the assemblies
-    checkM(
-        unicycler.out[0]
-    )
+        demultiplex.out.view
 
-    // Annotate the assemblies
-    prokka(
-        unicycler.out[0]
-    )
+    } else {
+
+        // Run the assembler
+        unicycler(
+            input_ch
+        )
+
+        // Compute metrics on the assembly
+        summarizeAssemblies(
+            unicycler.out[0]
+        )
+
+        // Check the quality of the assemblies
+        checkM(
+            unicycler.out[0]
+        )
+
+        // Annotate the assemblies
+        prokka(
+            unicycler.out[0]
+        )
+
+    }
 
 }

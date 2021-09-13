@@ -22,6 +22,16 @@ file will be placed in a subdirectory within the output folder, with that
 subdirectory named for the input file. Please ensure that all of these input
 files have unique names.
 
+## Demultiplexing
+
+To separate sequence data generated from different libraries, the `--barcodes` flag
+can be used to automatically demultiplex the input data before running any downstream
+analysis. The format of the barcodes file is described here: https://lima.how/get-started.html.
+
+The default flags being used for demultiplexing with lima are `--same` (indicating
+symmetric barcodes). For other types of barcodes, use the `--demux_flags` option, such as:
+`--demux_flags "--different"`
+
 ## Quality Control
 
 Quality control metrics are generated with the FastQC tool. For more details,
