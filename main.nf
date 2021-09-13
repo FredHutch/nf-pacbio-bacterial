@@ -7,9 +7,11 @@ nextflow.enable.dsl=2
 container__unicycler = "quay.io/biocontainers/unicycler:0.4.7--py37hdbcaa40_1"
 container__pandas = "quay.io/fhcrc-microbiome/python-pandas:latest"
 container__fastqc = "quay.io/biocontainers/fastqc:0.11.9--0"
+container__multiqc = "quay.io/biocontainers/multiqc:1.10--py_1"
 container__checkm = "quay.io/biocontainers/checkm-genome:1.1.3--py_1"
 container__prokka = "quay.io/fhcrc-microbiome/prokka:latest"
 container__lima = "quay.io/biocontainers/lima:2.2.0--h9ee0642_0"
+container__busco = "ezlabgva/busco:v5.2.2_cv1"
 
 // Function which prints help message text
 def helpMessage() {
@@ -258,6 +260,7 @@ process fastQC {
 
   output:
   file "${name}/*"
+  file "${name}/*_fastqc.zip", emit: zip
 
 """
 #!/bin/bash
@@ -273,6 +276,32 @@ ls -lahtr
 """
 
 }
+
+// Run MultiQC
+process multiQC {
+
+  container "${container__multiqc}"
+
+  publishDir "${params.output}", mode: 'copy', overwrite: true
+  
+  input:
+    file "*_fastqc.zip"
+
+  output:
+    file "multiqc_report.html"
+
+"""
+#!/bin/bash
+
+set -Eeuo pipefail
+
+multiqc .
+
+ls -lahtr
+"""
+
+}
+
 
 // Run CheckM
 process checkM {
@@ -308,6 +337,34 @@ rm -r input
 
 }
 
+// Run BUSCO
+process busco {
+
+  container "${container__busco}"
+  label "mem_medium"
+
+  publishDir "${params.output_folder}/${name}/${params.mode}/busco/", mode: "copy", overwrite: true 
+  
+  input:
+    file faa_gz
+
+  output:
+    file "*"
+
+"""
+#!/bin/bash
+
+set -Eeuo pipefail
+
+busco \
+    -m protein \
+    -i "${faa_gz}" \
+    -o "${faa_gz.name.replaceAll(/.faa.gz/, "")}" \
+    --auto-lineage-prok
+"""
+
+}
+
 process prokka {
     container "${container__prokka}"
     label "mem_medium"
@@ -317,7 +374,7 @@ process prokka {
     tuple val(genome_name), file(contigs_fasta_gz)
     
     output:
-    file "prokka/${genome_name}.${params.mode}.faa.gz"
+    file "prokka/${genome_name}.${params.mode}.faa.gz", emit: faa
     file "prokka/${genome_name}.${params.mode}.gbk.gz"
     file "prokka/${genome_name}.${params.mode}.gff.gz"
     file "prokka/${genome_name}.${params.mode}.tsv.gz"
@@ -408,6 +465,11 @@ workflow {
     // Annotate the assemblies
     prokka(
         unicycler.out[0]
+    )
+
+    // Score the completeness of the coding gene content
+    busco(
+        prokka.out.faa
     )
 
 }
