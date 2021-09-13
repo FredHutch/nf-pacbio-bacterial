@@ -257,6 +257,9 @@ process multiQC {
 
 set -Eeuo pipefail
 
+# Set up the configuration for MultiQC
+echo "config.prokka_fn_snames: True" > multiqc_config.yaml
+
 multiqc .
 
 ls -lahtr
