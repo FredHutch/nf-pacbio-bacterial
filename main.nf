@@ -311,7 +311,7 @@ process busco {
     tuple val(genome_name), file(faa_gz)
 
   output:
-    path "**.txt", emit: txt
+    path "*/short_summary.specific.*.txt", emit: txt
     path "*/logs/busco.log", emit: log
 
 """
