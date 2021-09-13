@@ -97,9 +97,8 @@ process unicycler {
     tuple val(genome_name), file(long_reads)
 
     output:
-    tuple val(genome_name), file("${genome_name}/${genome_name}.fasta.gz")
+    tuple val(genome_name), file("${genome_name}/${genome_name}.fasta.gz"), file("${genome_name}/${genome_name}.log")
     path "${genome_name}/${genome_name}.gfa"
-    path "${genome_name}/${genome_name}.log"
 
 """
 set -Eeuo pipefail
@@ -128,84 +127,20 @@ process summarizeAssemblies {
     publishDir "${params.output_folder}/${genome_name}/${params.mode}/", mode: "copy", overwrite: true
 
     input:
-    tuple val(genome_name), file(contigs_fasta_gz)
+    tuple val(genome_name), file(contigs_fasta_gz), file(assembly_log)
 
     output:
     path "${genome_name}.${params.mode}.json"
 
-"""#!/usr/bin/env python3
-import gzip
-import json
-import pandas as pd
+"""#!/bin/bash
 
-# Count the size, depth, and circularity of each contig
-contig_info = []
-contig_lengths = dict()
-length_buffer = 0
-contig_name = None
-for l in gzip.open("${contigs_fasta_gz}", "rt"):
-    if l.startswith(">"):
-        if contig_name is not None:
-            contig_lengths[contig_name] = length_buffer
-            length_buffer = 0
-        if " " in l:
-            contig_name, contig_dict = l.lstrip(">").rstrip("\\n").split(" ", 1)
-            contig_dict = dict([
-                (i.split("=")[0], i.split("=")[1])
-                for i in contig_dict.split(" ")
-            ])
-            contig_dict["name"] = contig_name
-            contig_dict["circular"] = contig_dict.get("circular", "false")
-            contig_info.append(contig_dict)
-        else:
-            contig_name = l.lstrip(">").rstrip("\\n")
-    else:
-        length_buffer += len(l.rstrip("\\n"))
-# Add the final contig
-contig_lengths[contig_name] = length_buffer
+set -e
 
-# Make into a DataFrame
-if len(contig_info) > 0:
-    contig_info = pd.DataFrame(contig_info)
-    contig_info["length"] = contig_info["length"].apply(int)
-    contig_info["depth"] = contig_info["depth"].apply(lambda s: float(s.rstrip("x")))
-    contig_info["circular"] = contig_info["circular"].fillna("false") == "true"
-else:
-    contig_info = pd.DataFrame(dict([("length", contig_lengths)])).reset_index()
-    contig_info["depth"] = 1
-    contig_info["circular"] = False
-contig_info.sort_values(by="length", ascending=False, inplace=True)
-
-# Calculate N50
-running_total = 0
-n50 = None
-for nbases in contig_info["length"].values:
-    running_total += nbases
-    if running_total >= contig_info["length"].sum() / 2.:
-        n50 = int(nbases)
-        break
-assert n50 is not None
-
-# Summarize these contigs
-output = {
-    "mode": "${params.mode}",
-    "genome_name": "${genome_name}",
-    "num_contigs": int(contig_info.shape[0]),
-    "num_circular_contigs": int(contig_info["circular"].sum()),
-    "circular_contig_lengths": ", ".join(contig_info.query("circular")["length"].apply(str).tolist()),
-    "linear_contig_lengths": ", ".join(contig_info.query("circular == False")["length"].apply(str).tolist()),
-    "num_bases": int(contig_info["length"].sum()),
-    "longest_contig": int(contig_info["length"].max()),
-    "num_over_1Mb": int((contig_info["length"] >= 1000000).sum()),
-    "num_100kb_to_1Mb": int(((contig_info["length"] < 1000000) & (contig_info["length"] >= 100000)).sum()),
-    "num_10kb_to_100kb": int(((contig_info["length"] < 100000) & (contig_info["length"] >= 10000)).sum()),
-    "num_1kb_to_10kb":    int(((contig_info["length"] < 10000) & (contig_info["length"] >= 1000)).sum()),
-    "num_under_1kb":        int((contig_info["length"] < 1000).sum()),
-    "N50": n50,
-}
-
-json.dump(output, open("${genome_name}.${params.mode}.json", "wt"), indent=4)
-
+summarizeAssemblies.py \
+    "${genome_name}" \
+    "${params.mode}" \
+    "${contigs_fasta_gz}" \
+    "${assembly_log}"
 """
 }
 
