@@ -236,7 +236,7 @@ process multiQC {
   input:
     file "fastqc/*"
     file "prokka/*"
-    file "busco/*.log"
+    file "busco/*"
     file "assemblies/*"
 
   output:
@@ -345,7 +345,7 @@ process prokka {
     path "prokka/${genome_name}.${params.mode}.gbk.gz"
     path "prokka/${genome_name}.${params.mode}.gff.gz"
     path "prokka/${genome_name}.${params.mode}.tsv.gz"
-    path "prokka/${genome_name}.${params.mode}.log", emit: log
+    path "prokka/${genome_name}.${params.mode}.txt", emit: txt
     
     """#!/bin/bash
 
@@ -443,8 +443,8 @@ workflow {
     // Collect QC metrics
     multiQC(
         fastQC.out.zip.toSortedList(),
-        prokka.out.log.toSortedList(),
-        busco.out.log.toSortedList(),
+        prokka.out.txt.toSortedList(),
+        busco.out.txt.toSortedList(),
         combineSummaries.out.multiqc.toSortedList()
     )
 
