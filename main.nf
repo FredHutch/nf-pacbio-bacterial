@@ -345,10 +345,10 @@ process busco {
   container "${container__busco}"
   label "mem_medium"
 
-  publishDir "${params.output_folder}/busco/", mode: "copy", overwrite: true 
+  publishDir "${params.output_folder}/${genome_name}/busco/", mode: "copy", overwrite: true 
   
   input:
-    file faa_gz
+    tuple val(genome_name), file(faa_gz)
 
   output:
     path "**.txt", emit: txt
@@ -391,7 +391,7 @@ process prokka {
     tuple val(genome_name), file(contigs_fasta_gz)
     
     output:
-    path "prokka/${genome_name}.${params.mode}.faa.gz", emit: faa
+    tuple val(genome_name), path("prokka/${genome_name}.${params.mode}.faa.gz"), emit: faa
     path "prokka/${genome_name}.${params.mode}.gbk.gz"
     path "prokka/${genome_name}.${params.mode}.gff.gz"
     path "prokka/${genome_name}.${params.mode}.tsv.gz"
