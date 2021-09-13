@@ -156,7 +156,7 @@ process combineSummaries {
 
     output:
     path "assembly_summary.${params.mode}.csv"
-    path "assembly_summary.${params.mode}.json", emit: multiqc
+    path "assembly_summary.${params.mode}_mqc.json", emit: multiqc
 
 """#!/usr/bin/env python3
 
@@ -189,7 +189,7 @@ multiqc_data = dict(
 )
 
 # Write out the MultiQC to a file
-with open("assembly_summary.${params.mode}.json", "w") as handle:
+with open("assembly_summary.${params.mode}_mqc.json", "w") as handle:
     json.dump(multiqc_data, handle, indent=4)
 
 """

@@ -148,4 +148,4 @@ output = {
     "N50": n50,
 }
 
-json.dump(output, open(f"{genome_name}.{assembly_mode}_mqc.json", "wt"), indent=4)
+json.dump(output, open(f"{genome_name}.{assembly_mode}.json", "wt"), indent=4)
