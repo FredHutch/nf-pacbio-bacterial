@@ -63,14 +63,16 @@ process demultiplex {
     container "${container__lima}"
     label "mem_medium"
     errorStrategy "finish"
-    publishDir "${params.output_folder}/demux/"
+    publishDir "${params.output_folder}/demux_reads/", pattern: "${genome_name}.demux.*.fq.gz"
+    publishDir "${params.output_folder}/demux_report/", pattern: "${genome_name}.demux.lima.*"
 
     input:
     tuple val(genome_name), file(input_fastq)
     file barcodes_fasta
 
     output:
-    file "*"
+    file "${genome_name}.demux.*.fq.gz", emit: reads
+    file "${genome_name}.demux.lima.*", emit: reports
 
 """
 set -Eeuo pipefail
@@ -329,35 +331,41 @@ workflow {
     // If barcodes were provided
     if (params.barcodes) {
 
+        // Demultiplex the reads
         demultiplex(
             input_ch,
             file(params.barcodes)
         )
 
-        demultiplex.out.view()
+        // Run assembly on the outputs
+        unicycler(
+            demultiplex.out.reads.map {
+                it -> [it.name.replaceAll(/.fq.gz/, ''), it]
+            }
+        )
 
     } else {
 
-        // Run the assembler
+        // Run the assembler on the input reads
         unicycler(
             input_ch
         )
 
-        // Compute metrics on the assembly
-        summarizeAssemblies(
-            unicycler.out[0]
-        )
-
-        // Check the quality of the assemblies
-        checkM(
-            unicycler.out[0]
-        )
-
-        // Annotate the assemblies
-        prokka(
-            unicycler.out[0]
-        )
-
     }
+
+    // Compute metrics on the assembly
+    summarizeAssemblies(
+        unicycler.out[0]
+    )
+
+    // Check the quality of the assemblies
+    checkM(
+        unicycler.out[0]
+    )
+
+    // Annotate the assemblies
+    prokka(
+        unicycler.out[0]
+    )
 
 }
