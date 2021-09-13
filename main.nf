@@ -354,11 +354,6 @@ workflow {
         it -> [it.name.replaceAll(/${params.suffix}/, ''), it]
     }
 
-    // Run FastQC on the reads
-    fastQC(
-        input_ch
-    )
-
     // If barcodes were provided
     if (params.barcodes) {
 
@@ -368,25 +363,32 @@ workflow {
             file(params.barcodes)
         )
 
-        // Run assembly on the outputs
-        unicycler(
-            demultiplex
-                .out
-                .reads
-                .flatten()
-                .map {
-                    it -> [it.name.replaceAll(/.fq.gz/, ''), it]
-                }
-        )
+        // Set up a channel with the demultiplexed reads
+        fastq_ch = demultiplex
+            .out
+            .reads
+            .flatten()
+            .map {
+                it -> [it.name.replaceAll(/.fq.gz/, ''), it]
+            }
+
 
     } else {
 
-        // Run the assembler on the input reads
-        unicycler(
-            input_ch
-        )
+        // Run the downstream analysis on the input reads
+        fastq_ch = input_ch
 
     }
+
+    // Run the assembler on the input reads
+    unicycler(
+        fastq_ch
+    )
+
+    // Run FastQC on the input reads
+    fastQC(
+        fastq_ch
+    )
 
     // Compute metrics on the assembly
     summarizeAssemblies(
