@@ -207,6 +207,43 @@ json.dump(output, open("${genome_name}.${params.mode}.json", "wt"), indent=4)
 """
 }
 
+
+// Combine the genome summaries
+process combineSummaries {
+    container "${container__pandas}"
+    label "io_limited"
+    publishDir "${params.output_folder}/"
+
+    input:
+    file "*"
+
+    output:
+    file "assembly_summary.${params.mode}.csv"
+
+"""#!/usr/bin/env python3
+
+import json
+import os
+import pandas as pd
+
+# Make a DataFrame
+df = pd.DataFrame(
+    [
+        # Containing data read from the file in JSON format
+        json.load(open(fp, 'r'))
+        # Reading over each file in the folder
+        for fp in os.listdir(".")
+        # If the file ends with the expected suffix
+        if fp.endswith(".${params.mode}.json")
+    ]
+)
+
+# Write it out to a file
+df.to_csv("assembly_summary.${params.mode}.csv")
+
+"""
+}
+
 // Run FastQC
 process fastQC {
 
@@ -354,6 +391,11 @@ workflow {
     // Compute metrics on the assembly
     summarizeAssemblies(
         unicycler.out[0]
+    )
+
+    // Join together the assembly metrics
+    combineSummaries(
+        summarizeAssemblies.out.toSortedList()
     )
 
     // Check the quality of the assemblies
