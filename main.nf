@@ -156,6 +156,7 @@ process combineSummaries {
 
     output:
     file "assembly_summary.${params.mode}.csv"
+    file "assembly_summary.${params.mode}.json", emit: multiqc
 
 """#!/usr/bin/env python3
 
@@ -177,6 +178,19 @@ df = pd.DataFrame(
 
 # Write it out to a file
 df.to_csv("assembly_summary.${params.mode}.csv", index=None)
+
+# Format a file which can be parsed by MultiQC
+multiqc_data = dict(
+    id="custom_assembly_${params.mode}_summary",
+    section_name="Assembly Summary (${params.mode})",
+    description="Summary of contigs assembled per-sample from ${params.mode}-mode assemblies",
+    plot_type="table",
+    data=df.to_dict(orient="index")
+)
+
+# Write out the MultiQC to a file
+with open("assembly_summary.${params.mode}.json", "w") as handle:
+    json.dump(multiqc_data, handle, indent=4)
 
 """
 }
@@ -223,6 +237,7 @@ process multiQC {
     file "fastqc/*"
     file "prokka/*"
     file "busco/*.log"
+    file "assemblies/*"
 
   output:
     file "multiqc_report.html"
@@ -430,6 +445,7 @@ workflow {
         fastQC.out.zip.toSortedList(),
         prokka.out.log.toSortedList(),
         busco.out.log.toSortedList(),
+        combineSummaries.out.multiqc.toSortedList()
     )
 
 }
