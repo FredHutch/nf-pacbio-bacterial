@@ -155,8 +155,8 @@ process combineSummaries {
     file "*"
 
     output:
-    file "assembly_summary.${params.mode}.csv"
-    file "assembly_summary.${params.mode}.json", emit: multiqc
+    path "assembly_summary.${params.mode}.csv"
+    path "assembly_summary.${params.mode}.json", emit: multiqc
 
 """#!/usr/bin/env python3
 
