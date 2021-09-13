@@ -66,7 +66,7 @@ process demultiplex {
     publishDir "${params.output_folder}/demux/"
 
     input:
-    file input_fastq
+    tuple val(genome_name), file(input_fastq)
     file barcodes_fasta
 
     output:
@@ -78,7 +78,7 @@ set -Eeuo pipefail
 lima \
     "${input_fastq}" \
     "${barcodes_fasta}" \
-    "${input_fastq}.demux.fq.gz" \
+    "${genome_name}.demux.fq.gz" \
     ${params.demux_flags}
 
 """
