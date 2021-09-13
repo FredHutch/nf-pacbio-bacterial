@@ -448,8 +448,6 @@ workflow {
 
     }
 
-    fastq_ch.view()
-
     // Run the assembler on the input reads
     unicycler(
         fastq_ch
