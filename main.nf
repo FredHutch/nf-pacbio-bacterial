@@ -217,7 +217,7 @@ process multiQC {
 
   container "${container__multiqc}"
 
-  publishDir "${params.output}", mode: 'copy', overwrite: true
+  publishDir "${params.output}/", mode: 'copy', overwrite: true
   
   input:
     file "fastqc/*"
