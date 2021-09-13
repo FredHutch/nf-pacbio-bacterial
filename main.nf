@@ -343,13 +343,14 @@ process busco {
   container "${container__busco}"
   label "mem_medium"
 
-  publishDir "${params.output_folder}/${name}/${params.mode}/busco/", mode: "copy", overwrite: true 
+  publishDir "${params.output_folder}/busco/", mode: "copy", overwrite: true 
   
   input:
     file faa_gz
 
   output:
-    file "*"
+    path "**.txt", emit: txt
+    path "*/logs/busco.log", emit: log
 
 """
 #!/bin/bash
@@ -371,6 +372,9 @@ busco \
 
 # Remove the temporary decompressed copy of the input files
 rm \$BASE_NAME.faa
+
+# Remove the downloaded lineages
+rm -rf busco_downloads
 
 """
 
