@@ -356,11 +356,22 @@ process busco {
 
 set -Eeuo pipefail
 
+# Get the base file name
+BASE_NAME="${faa_gz.name.replaceAll(/.faa.gz/, "")}"
+
+# Decompress the input
+gunzip -c "${faa_gz}" > \$BASE_NAME.faa
+
+# Run BUSCO
 busco \
     -m protein \
-    -i "${faa_gz}" \
-    -o "${faa_gz.name.replaceAll(/.faa.gz/, "")}" \
+    -i  "\$BASE_NAME.faa" \
+    -o "\$BASE_NAME" \
     --auto-lineage-prok
+
+# Remove the temporary decompressed copy of the input files
+rm \$BASE_NAME.faa
+
 """
 
 }
@@ -436,6 +447,8 @@ workflow {
         fastq_ch = input_ch
 
     }
+
+    fastq_ch.view()
 
     // Run the assembler on the input reads
     unicycler(
