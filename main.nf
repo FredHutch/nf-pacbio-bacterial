@@ -98,8 +98,8 @@ process unicycler {
 
     output:
     tuple val(genome_name), file("${genome_name}/${genome_name}.fasta.gz")
-    file "${genome_name}/${genome_name}.gfa"
-    file "${genome_name}/${genome_name}.log"
+    path "${genome_name}/${genome_name}.gfa"
+    path "${genome_name}/${genome_name}.log"
 
 """
 set -Eeuo pipefail
@@ -131,7 +131,7 @@ process summarizeAssemblies {
     tuple val(genome_name), file(contigs_fasta_gz)
 
     output:
-    file "${genome_name}.${params.mode}.json"
+    path "${genome_name}.${params.mode}.json"
 
 """#!/usr/bin/env python3
 import gzip
@@ -259,8 +259,8 @@ process fastQC {
     tuple val(name), file(reads)
 
   output:
-  file "${name}/*"
-  file "${name}/*_fastqc.zip", emit: zip
+  path "${name}/*"
+  path "${name}/*_fastqc.zip", emit: zip
 
 """
 #!/bin/bash
@@ -374,10 +374,10 @@ process prokka {
     tuple val(genome_name), file(contigs_fasta_gz)
     
     output:
-    file "prokka/${genome_name}.${params.mode}.faa.gz", emit: faa
-    file "prokka/${genome_name}.${params.mode}.gbk.gz"
-    file "prokka/${genome_name}.${params.mode}.gff.gz"
-    file "prokka/${genome_name}.${params.mode}.tsv.gz"
+    path "prokka/${genome_name}.${params.mode}.faa.gz", emit: faa
+    path "prokka/${genome_name}.${params.mode}.gbk.gz"
+    path "prokka/${genome_name}.${params.mode}.gff.gz"
+    path "prokka/${genome_name}.${params.mode}.tsv.gz"
     
     """#!/bin/bash
 
