@@ -62,7 +62,6 @@ params.mode = "normal"
 process demultiplex {
     container "${container__lima}"
     label "mem_medium"
-    errorStrategy "finish"
     publishDir "${params.output_folder}/demux_reads/", mode: "copy", overwrite: true, pattern: "${genome_name}.demux.*.fq.gz"
     publishDir "${params.output_folder}/demux_report/", mode: "copy", overwrite: true, pattern: "${genome_name}.demux.lima.*"
 
@@ -90,7 +89,6 @@ lima \
 process unicycler {
     container "${container__unicycler}"
     label "mem_veryhigh"
-    errorStrategy "finish"
     publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
 
     input:
@@ -125,7 +123,6 @@ gzip ${genome_name}/${genome_name}.fasta
 process summarizeAssemblies {
     container "${container__pandas}"
     label "io_limited"
-    errorStrategy "finish"
     publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
 
     input:
@@ -216,7 +213,6 @@ process fastQC {
   // Docker container to use
   container "${container__fastqc}"
   label "io_limited"
-  errorStrategy 'finish'
 
   publishDir "${params.output_folder}/${name}/${params.mode}/" 
   
@@ -246,7 +242,6 @@ process checkM {
 
   container "${container__checkm}"
   label "mem_medium"
-  errorStrategy 'finish'
 
   publishDir "${params.output_folder}/${name}/${params.mode}/checkm/" 
   
@@ -279,7 +274,6 @@ rm -r input
 process prokka {
     container "${container__prokka}"
     label "mem_medium"
-    errorStrategy 'finish'
     publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
 
     input:
