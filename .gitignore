@@ -4,6 +4,8 @@
 report.html*
 trace.txt*
 test.sh
+output/
+sequelTools_output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
