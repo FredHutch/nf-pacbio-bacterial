@@ -222,7 +222,7 @@ process multiQC {
   input:
     file "fastqc/*"
     file "prokka/*"
-    file "busco/*"
+    file "busco/*.log"
 
   output:
     file "multiqc_report.html"
