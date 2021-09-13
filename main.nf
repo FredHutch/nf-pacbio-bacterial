@@ -339,9 +339,13 @@ workflow {
 
         // Run assembly on the outputs
         unicycler(
-            demultiplex.out.reads.map {
-                it -> [it.name.replaceAll(/.fq.gz/, ''), it]
-            }
+            demultiplex
+                .out
+                .reads
+                .flatten()
+                .map {
+                    it -> [it.name.replaceAll(/.fq.gz/, ''), it]
+                }
         )
 
     } else {
