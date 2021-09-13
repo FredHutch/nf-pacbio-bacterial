@@ -63,16 +63,16 @@ process demultiplex {
     container "${container__lima}"
     label "mem_medium"
     errorStrategy "finish"
-    publishDir "${params.output_folder}/demux_reads/", pattern: "${genome_name}.demux.*.fq.gz"
-    publishDir "${params.output_folder}/demux_report/", pattern: "${genome_name}.demux.lima.*"
+    publishDir "${params.output_folder}/demux_reads/", mode: "copy", overwrite: true, pattern: "${genome_name}.demux.*.fq.gz"
+    publishDir "${params.output_folder}/demux_report/", mode: "copy", overwrite: true, pattern: "${genome_name}.demux.lima.*"
 
     input:
     tuple val(genome_name), file(input_fastq)
     file barcodes_fasta
 
     output:
-    file "${genome_name}.demux.*.fq.gz", emit: reads
-    file "${genome_name}.demux.lima.*", emit: reports
+    path "${genome_name}.demux.*.fq.gz", emit: reads
+    path "${genome_name}.demux.lima.*", emit: reports
 
 """
 set -Eeuo pipefail
