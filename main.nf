@@ -89,7 +89,7 @@ lima \
 process unicycler {
     container "${container__unicycler}"
     label "mem_veryhigh"
-    publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
+    publishDir "${params.output_folder}/${genome_name}/${params.mode}/", mode: "copy", overwrite: true
 
     input:
     tuple val(genome_name), file(long_reads)
@@ -123,7 +123,7 @@ gzip ${genome_name}/${genome_name}.fasta
 process summarizeAssemblies {
     container "${container__pandas}"
     label "io_limited"
-    publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
+    publishDir "${params.output_folder}/${genome_name}/${params.mode}/", mode: "copy", overwrite: true
 
     input:
     tuple val(genome_name), file(contigs_fasta_gz)
@@ -212,7 +212,7 @@ json.dump(output, open("${genome_name}.${params.mode}.json", "wt"), indent=4)
 process combineSummaries {
     container "${container__pandas}"
     label "io_limited"
-    publishDir "${params.output_folder}/"
+    publishDir "${params.output_folder}/", mode: "copy", overwrite: true
 
     input:
     file "*"
@@ -251,7 +251,7 @@ process fastQC {
   container "${container__fastqc}"
   label "io_limited"
 
-  publishDir "${params.output_folder}/${name}/${params.mode}/" 
+  publishDir "${params.output_folder}/${name}/${params.mode}/", mode: "copy", overwrite: true
   
   input:
     tuple val(name), file(reads)
@@ -280,7 +280,7 @@ process checkM {
   container "${container__checkm}"
   label "mem_medium"
 
-  publishDir "${params.output_folder}/${name}/${params.mode}/checkm/" 
+  publishDir "${params.output_folder}/${name}/${params.mode}/checkm/", mode: "copy", overwrite: true 
   
   input:
     tuple val(name), file(fasta_gz)
@@ -311,7 +311,7 @@ rm -r input
 process prokka {
     container "${container__prokka}"
     label "mem_medium"
-    publishDir "${params.output_folder}/${genome_name}/${params.mode}/"
+    publishDir "${params.output_folder}/${genome_name}/${params.mode}/", mode: "copy", overwrite: true
 
     input:
     tuple val(genome_name), file(contigs_fasta_gz)
