@@ -185,7 +185,17 @@ multiqc_data = dict(
     section_name="Assembly Summary (${params.mode})",
     description="Summary of contigs assembled per-sample from ${params.mode}-mode assemblies",
     plot_type="table",
-    data=df.to_dict(orient="index")
+    data=df.set_index(
+        "genome_name"
+    ).drop(
+        columns=[
+            "mode",
+            "circular_contig_lengths",
+            "linear_contig_lengths",
+        ]
+    ).to_dict(
+        orient="index"
+    )
 )
 
 # Write out the MultiQC to a file
