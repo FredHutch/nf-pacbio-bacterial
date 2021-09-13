@@ -249,7 +249,7 @@ process checkM {
   publishDir "${params.output_folder}/${name}/${params.mode}/checkm/", mode: "copy", overwrite: true 
   
   input:
-    tuple val(name), file(fasta_gz)
+    tuple val(name), file(fasta_gz), file(assembly_log)
 
   output:
     file "*"
@@ -323,7 +323,7 @@ process prokka {
     publishDir "${params.output_folder}/${genome_name}/${params.mode}/", mode: "copy", overwrite: true
 
     input:
-    tuple val(genome_name), file(contigs_fasta_gz)
+    tuple val(genome_name), file(contigs_fasta_gz), file(assembly_log)
     
     output:
     tuple val(genome_name), path("prokka/${genome_name}.${params.mode}.faa.gz"), emit: faa
