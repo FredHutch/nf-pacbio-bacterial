@@ -285,7 +285,9 @@ process multiQC {
   publishDir "${params.output}", mode: 'copy', overwrite: true
   
   input:
-    file "*_fastqc.zip"
+    file "fastqc/*"
+    file "prokka/*"
+    file "busco/*"
 
   output:
     file "multiqc_report.html"
@@ -393,6 +395,7 @@ process prokka {
     path "prokka/${genome_name}.${params.mode}.gbk.gz"
     path "prokka/${genome_name}.${params.mode}.gff.gz"
     path "prokka/${genome_name}.${params.mode}.tsv.gz"
+    path "prokka/${genome_name}.${params.mode}.log", emit: log
     
     """#!/bin/bash
 
@@ -485,6 +488,13 @@ workflow {
     // Score the completeness of the coding gene content
     busco(
         prokka.out.faa
+    )
+
+    // Collect QC metrics
+    multiQC(
+        fastQC.out.zip.toSortedList(),
+        prokka.out.log.toSortedList(),
+        busco.out.log.toSortedList(),
     )
 
 }
