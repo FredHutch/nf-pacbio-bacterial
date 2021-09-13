@@ -239,7 +239,7 @@ df = pd.DataFrame(
 )
 
 # Write it out to a file
-df.to_csv("assembly_summary.${params.mode}.csv")
+df.to_csv("assembly_summary.${params.mode}.csv", index=None)
 
 """
 }
